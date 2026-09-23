@@ -1,0 +1,17 @@
+backend/
+├── venv/                   # Tu entorno virtual (autogenerado, no se toca)
+├── .env                    # Variables secretas (contraseñas, URLs). Nunca se sube a Git.
+├── .gitignore              # Lista de archivos que Git debe ignorar (.env, venv, __pycache__)
+├── requirements.txt        # Lista de librerías instaladas (fastapi, sqlalchemy, etc.)
+└── app/                    # Carpeta principal de tu código fuente
+    ├── __init__.py         # Archivo vacío que indica que 'app' es un módulo de Python
+    ├── main.py             # Punto de entrada. Arranca FastAPI e importa los 'routers'
+    ├── database.py         # Conexión a PostgreSQL (engine, SessionLocal)
+    ├── models.py           # Estructura de las tablas de la BD (SQLAlchemy)
+    ├── schemas.py          # Reglas de validación de datos que entran/salen (Pydantic)
+    ├── crud.py             # Funciones que ejecutan operaciones en la BD (Crear, Leer, Actualizar)
+    └── routers/            # Carpeta para dividir los endpoints por entidades
+        ├── __init__.py
+        ├── clientes.py     # Rutas web (/clientes)
+        └── facturas.py     # Rutas web (/facturas)
+
