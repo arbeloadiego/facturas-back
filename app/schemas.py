@@ -1,38 +1,110 @@
 from pydantic import BaseModel, ConfigDict
+from datetime import datetime, date
 from typing import Optional, List
 
 # ==========================================
-# ESQUEMAS DE FACTURA
+# 1. SCHEMAS PARA CLIENTES (Customers)
 # ==========================================
-class FacturaBase(BaseModel):
-    concepto: str
-    total: float
+class CustomerBase(BaseModel):
+    cif: str
+    name: str
+    email: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: str = "Spain"
 
-class FacturaCreate(FacturaBase):
-    cliente_id: int
+class CustomerCreate(CustomerBase):
+    pass
 
-class FacturaResponse(FacturaBase):
+class Customer(CustomerBase):
     id: int
-    cliente_id: int
+    created_at: datetime
 
-    # Esto permite que Pydantic sepa leer el objeto que viene de SQLAlchemy
     model_config = ConfigDict(from_attributes=True)
 
 
 # ==========================================
-# ESQUEMAS DE CLIENTE
+# 2. SCHEMAS PARA EMPRESAS (Companies)
 # ==========================================
-class ClienteBase(BaseModel):
-    nombre: str
-    nif: str
+class CompanyBase(BaseModel):
+    cif: str
+    name: str
+    legal_name: Optional[str] = None
     email: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    province: Optional[str] = None
+    country: str = "Spain"
+    currency: str = "EUR"
 
-class ClienteCreate(ClienteBase):
-    pass # Usa los mismos campos que ClienteBase sin añadir nada nuevo
+class CompanyCreate(CompanyBase):
+    pass
 
-class ClienteResponse(ClienteBase):
+class Company(CompanyBase):
     id: int
-    # Gracias a esto, al pedir un cliente, verás de golpe todas sus facturas
-    facturas: List[FacturaResponse] = []
+    created_at: datetime
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# 3. SCHEMAS PARA USUARIOS (Users)
+# ==========================================
+class UserBase(BaseModel):
+    username: str
+    email: str
+    name: str
+    surname: str
+
+class UserCreate(UserBase):
+    password: str  # Solo de entrada, nunca se devuelve
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# 4. SCHEMAS PARA DOCUMENTOS Y LÍNEAS (Documents & Items)
+# ==========================================
+class DocumentItemBase(BaseModel):
+    description: str
+    quantity: int = 1
+    unit_price: float
+    tax_rate: float = 21.0
+
+class DocumentItemCreate(DocumentItemBase):
+    pass
+
+class DocumentItem(DocumentItemBase):
+    id: int
+    id_document: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentBase(BaseModel):
+    type: str  # "INVOICE" o "QUOTE"
+    number: str
+    issue_date: date
+    due_date: Optional[date] = None
+    status: str = "PENDING"
+    total_amount: float = 0.0
+    id_company: int
+    id_customer: int
+
+class DocumentCreate(DocumentBase):
+    items: List[DocumentItemCreate]
+
+class Document(DocumentBase):
+    id: int
+    created_at: datetime
+    items: List[DocumentItem] = []
 
     model_config = ConfigDict(from_attributes=True)

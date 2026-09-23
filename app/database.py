@@ -14,8 +14,9 @@ if not mi_contrasena:
     
 password_segura = urllib.parse.quote_plus(mi_contrasena)
 
-# 3. Construir la URL de conexión apuntando a la Raspberry Pi
-DATABASE_URL = f"postgresql://admin_facturas:{password_segura}@db:5432/facturacion_produccion"
+# 3. Construir la URL de conexión leyendo el host (con "db" por defecto)
+db_host = os.getenv("DB_HOST", "db")
+DATABASE_URL = f"postgresql://admin_facturas:{password_segura}@{db_host}:5432/facturacion_produccion"
 
 # 4. Inicializar el motor de la base de datos
 engine = create_engine(DATABASE_URL)
