@@ -9,6 +9,7 @@ class CustomerBase(BaseModel):
     cif: str
     name: str
     email: Optional[str] = None
+    telephone: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None

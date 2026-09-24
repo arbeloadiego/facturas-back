@@ -12,7 +12,8 @@ app = FastAPI(title="API de Facturación")
 # --- CONFIGURACIÓN DE CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción aquí pondrías la URL de tu React
+    # Pon los puertos donde suele arrancar tu React en local
+    allow_origins=["http://localhost:5173", "http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"],

@@ -96,6 +96,7 @@ class Customer(Base):
     cif = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False)
     email = Column(String)
+    telephone = Column(String, nullable=True)
     address = Column(String)
     city = Column(String)
     postal_code = Column(String)
