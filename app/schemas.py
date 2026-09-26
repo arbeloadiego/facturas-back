@@ -39,8 +39,15 @@ class CompanyBase(BaseModel):
     province: Optional[str] = None
     country: str = "Spain"
     currency: str = "EUR"
+    # Añadidos para que coincidan con el frontend (Settings.jsx)
+    telephone: Optional[str] = None
+    website: Optional[str] = None
 
 class CompanyCreate(CompanyBase):
+    pass
+
+# NUEVO: Esquema para actualizar la empresa
+class CompanyUpdate(CompanyBase):
     pass
 
 class Company(CompanyBase):
@@ -107,5 +114,10 @@ class Document(DocumentBase):
     id: int
     created_at: datetime
     items: List[DocumentItem] = []
+    
+    customer: Optional[Customer] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class DocumentStatusUpdate(BaseModel):
+    status: str

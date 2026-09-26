@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
+from .auth import get_current_user
 
 # 1. Importamos todos los routers
-from .routers import customers, documents, companies, users
+from .routers import customers, documents, companies, users, auth
 
 Base.metadata.create_all(bind=engine)
 
@@ -25,6 +26,10 @@ app.include_router(customers.router)
 app.include_router(documents.router)
 app.include_router(companies.router)
 app.include_router(users.router)
+app.include_router(auth.router)
+
+app.include_router(customers.router, dependencies=[Depends(get_current_user)])
+app.include_router(documents.router, dependencies=[Depends(get_current_user)])
 
 @app.get("/")
 def read_root():

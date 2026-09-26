@@ -27,3 +27,19 @@ def read_company(company_id: int, db: Session = Depends(get_db)):
     if not db_company:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
     return db_company
+
+@router.put("/companies/{company_id}")
+def update_company(company_id: int, company: schemas.CompanyUpdate, db: Session = Depends(get_db)):
+    db_company = db.query(models.Company).filter(models.Company.id == company_id).first()
+    if not db_company:
+        # Si no existe, la creamos forzando el ID
+        db_company = models.Company(id=company_id, **company.model_dump())
+        db.add(db_company)
+    else:
+        # Si existe, la actualizamos
+        for key, value in company.model_dump().items():
+            setattr(db_company, key, value)
+    
+    db.commit()
+    db.refresh(db_company)
+    return db_company

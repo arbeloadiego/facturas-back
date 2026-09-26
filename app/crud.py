@@ -22,6 +22,24 @@ def create_customer(db: Session, customer: schemas.CustomerCreate):
     db.refresh(db_customer)
     return db_customer
 
+def update_customer(db: Session, customer_id: int, customer_data: schemas.CustomerCreate):
+    # 1. Buscamos el cliente en la base de datos
+    db_customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    
+    if db_customer:
+        # 2. Actualizamos los campos usando los datos que vienen de React
+        # Convertimos el esquema a diccionario (usa .dict() si usas Pydantic v1)
+        update_data = customer_data.model_dump(exclude_unset=True) 
+        
+        for key, value in update_data.items():
+            setattr(db_customer, key, value)
+            
+        # 3. Guardamos los cambios
+        db.commit()
+        db.refresh(db_customer)
+        
+    return db_customer
+
 # ==========================================
 # COMPANY OPERATIONS (Empresas)
 # ==========================================
@@ -38,6 +56,8 @@ def create_company(db: Session, company: schemas.CompanyCreate):
     db.commit()
     db.refresh(db_company)
     return db_company
+
+
 
 # ==========================================
 # USER OPERATIONS (Usuarios)
@@ -89,6 +109,39 @@ def create_document(db: Session, document: schemas.DocumentCreate):
         
     # 4. Guardamos todo en la base de datos en una sola transacción segura
     db.add(db_document)
+    db.commit()
+    db.refresh(db_document)
+    
+    return db_document
+
+def delete_document(db: Session, document_id: int):
+    db_document = db.query(models.Document).filter(models.Document.id == document_id).first()
+    if db_document:
+        db.delete(db_document)
+        db.commit()
+    return db_document
+
+def update_document(db: Session, document_id: int, document: schemas.DocumentCreate):
+    # 1. Buscamos el documento original
+    db_document = db.query(models.Document).filter(models.Document.id == document_id).first()
+    
+    if not db_document:
+        return None
+
+    # 2. Actualizamos la cabecera (Factura)
+    document_data = document.model_dump(exclude={"items"})
+    for key, value in document_data.items():
+        setattr(db_document, key, value)
+        
+    # 3. Borramos los items antiguos
+    db.query(models.DocumentItem).filter(models.DocumentItem.id_document == document_id).delete()
+    
+    # 4. Insertamos los nuevos items
+    for item in document.items:
+        db_item = models.DocumentItem(**item.model_dump(), id_document=document_id)
+        db.add(db_item)
+        
+    # 5. Guardamos cambios
     db.commit()
     db.refresh(db_document)
     

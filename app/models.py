@@ -65,8 +65,9 @@ class Company(Base):
     name = Column(String, nullable=False)
     legal_name = Column(String)
     logo_url = Column(String)
-    website = Column(String)
+    website = Column(String, nullable=True)
     email = Column(String)
+    telephone = Column(String, nullable=True)
     
     address = Column(String)
     city = Column(String)
