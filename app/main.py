@@ -22,8 +22,6 @@ app.add_middleware(
 # -----------------------------
 
 # 2. Conectamos las rutas a la aplicación principal
-app.include_router(customers.router)
-app.include_router(documents.router)
 app.include_router(companies.router)
 app.include_router(users.router)
 app.include_router(auth.router)

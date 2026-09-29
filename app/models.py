@@ -104,8 +104,12 @@ class Customer(Base):
     country = Column(String, default="Spain")
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     
+    # NUEVO: Aislamos el cliente por empresa
+    id_company = Column(Integer, ForeignKey("company.id"), nullable=False)
+    
     # Relaciones
     documents = relationship("Document", back_populates="customer")
+    company = relationship("Company") # Opcional, pero útil
 
 
 class Document(Base):

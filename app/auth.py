@@ -2,12 +2,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 import bcrypt
+from jose import JWTError
 
-# Imports corregidos:
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-# ⚠️ En producción, esta clave secreta debe ir en un archivo .env
+# En producción, esta clave secreta debe ir en un archivo .env
 SECRET_KEY = "tu_super_clave_secreta_muy_larga_y_dificil_de_adivinar"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # El token durará 7 días
@@ -41,17 +41,49 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Verifica el token en cada petición al servidor"""
+    """Verifica el token en cada petición al servidor y extrae la empresa"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales inválidas o expiradas",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
+        id_company: int = payload.get("id_company")
+        
         if email is None:
             raise credentials_exception
-        return payload
-    except Exception:
+            
+    except JWTError: 
         raise credentials_exception
+        
+    if id_company is None:
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu usuario no tiene ninguna empresa asignada."
+        )
+        
+    return payload
+
+def get_user_without_company(token: str = Depends(oauth2_scheme)):
+    """Verifica el token, pero permite el paso a usuarios que aún no tienen empresa (Para el Onboarding)"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales inválidas o expiradas",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        
+        if email is None:
+            raise credentials_exception
+            
+    except JWTError: 
+        raise credentials_exception
+        
+    return payload
+

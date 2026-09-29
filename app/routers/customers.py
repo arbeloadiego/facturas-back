@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError 
 from typing import List, Optional
+
+from app.auth import get_current_user
 
 from .. import crud, schemas, models
 from ..database import SessionLocal
@@ -17,11 +20,29 @@ def get_db():
         db.close()
 
 @router.post("/", response_model=schemas.Customer)
-def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
-    db_customer = crud.get_customer_by_cif(db, cif=customer.cif)
+def create_customer(
+    customer: schemas.CustomerCreate, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user) 
+):
+    company_id = current_user.get("id_company")
+    
+    # Comprobamos el CIF SOLO dentro de los clientes de esta empresa
+    db_customer = db.query(models.Customer).filter(
+        models.Customer.cif == customer.cif,
+        models.Customer.id_company == company_id
+    ).first()
+    
     if db_customer:
-        raise HTTPException(status_code=400, detail="El CIF/NIF ya está registrado")
-    return crud.create_customer(db=db, customer=customer)
+        raise HTTPException(status_code=400, detail="El CIF/NIF ya está registrado en tu empresa")
+    
+    # Creamos el cliente pasándole el id_company al CRUD
+    # (Asegúrate de que tu schemas.CustomerCreate o tu función crud.create_customer acepten id_company)
+    new_customer = models.Customer(**customer.dict(), id_company=company_id)
+    db.add(new_customer)
+    db.commit()
+    db.refresh(new_customer)
+    return new_customer
 
 @router.get("/", response_model=List[schemas.Customer])
 def get_customers(
@@ -29,9 +50,11 @@ def get_customers(
     tab: str = "All",
     sort_by: str = "created_at",
     sort_desc: bool = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user) # <--- Requerimos el usuario activo
 ):
-    query = db.query(models.Customer)
+    company_id = current_user.get("id_company")
+    query = db.query(models.Customer).filter(models.Customer.id_company == company_id)
 
     # 1. BÚSQUEDA TEXTO LIBRE (Search)
     if search:
@@ -89,3 +112,28 @@ def update_customer(customer_id: int, customer: schemas.CustomerCreate, db: Sess
         raise HTTPException(status_code=404, detail="Customer not found")
         
     return db_customer
+
+@router.delete("/{customer_id}")
+def delete_customer(
+    customer_id: int, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    company_id = current_user.get("id_company")
+    
+    # Buscamos el cliente asegurándonos de que es de su empresa
+    db_customer = db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.id_company == company_id
+    ).first()
+    
+    if db_customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found or access denied")
+
+    try:
+        db.delete(db_customer)
+        db.commit()
+        return {"detail": "Cliente eliminado correctamente"}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="No se puede eliminar porque tiene documentos.")

@@ -40,10 +40,10 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 # 2. RUTA PARA INICIAR SESIÓN (LOGIN)
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # OAuth2 usa "username" por defecto, pero nosotros le pasaremos el email
+    # 1. Buscamos al usuario
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     
-    # Si no existe el usuario o la contraseña es incorrecta
+    # 2. Comprobamos la contraseña
     if not user or not auth.verify_password(form_data.password, user.hashed_pass):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,10 +51,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Si todo es correcto, generamos su token (su "pasaporte")
+    user_company = db.query(models.UserCompany).filter(models.UserCompany.id_user == user.id).first()
+    company_id = user_company.id_company if user_company else None
+    
     access_token = auth.create_access_token(
-        data={"sub": user.email, "id": user.id}
+        data={
+            "sub": user.email, 
+            "id": user.id,
+            "id_company": company_id  
+        }
     )
     
-    # Devolvemos el token en el formato estándar
     return {"access_token": access_token, "token_type": "bearer"}
