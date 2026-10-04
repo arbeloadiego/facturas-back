@@ -39,14 +39,12 @@ class CompanyBase(BaseModel):
     province: Optional[str] = None
     country: str = "Spain"
     currency: str = "EUR"
-    # Añadidos para que coincidan con el frontend (Settings.jsx)
     telephone: Optional[str] = None
     website: Optional[str] = None
 
 class CompanyCreate(CompanyBase):
     pass
 
-# NUEVO: Esquema para actualizar la empresa
 class CompanyUpdate(CompanyBase):
     pass
 
@@ -79,7 +77,36 @@ class User(UserBase):
 
 
 # ==========================================
-# 4. SCHEMAS PARA DOCUMENTOS Y LÍNEAS (Documents & Items)
+# 4. SCHEMAS PARA PROYECTOS (Projects) - ¡NUEVO!
+# ==========================================
+class ProjectBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: str = "activo"
+    budget: Optional[float] = None
+    id_customer: int # Obligatorio vincularlo a un cliente al crearlo
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(BaseModel):
+    # Todos opcionales para permitir actualizaciones parciales
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    budget: Optional[float] = None
+    id_customer: Optional[int] = None
+
+class Project(ProjectBase):
+    id: int
+    id_company: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# 5. SCHEMAS PARA DOCUMENTOS Y LÍNEAS (Documents & Items)
 # ==========================================
 class DocumentItemBase(BaseModel):
     description: str
@@ -106,6 +133,7 @@ class DocumentBase(BaseModel):
     total_amount: float = 0.0
     id_company: int
     id_customer: int
+    id_project: Optional[int] = None 
 
 class DocumentCreate(DocumentBase):
     items: List[DocumentItemCreate]
@@ -114,8 +142,8 @@ class Document(DocumentBase):
     id: int
     created_at: datetime
     items: List[DocumentItem] = []
-    
     customer: Optional[Customer] = None
+    project: Optional[Project] = None 
 
     model_config = ConfigDict(from_attributes=True)
 

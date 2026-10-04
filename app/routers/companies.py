@@ -36,7 +36,7 @@ class CompanyOnboarding(BaseModel):
     iban: str | None = None
     swift_bic: str | None = None
 
-# --- 2. RUTA DE ONBOARDING (LA QUE DABA ERROR 404) ---
+# --- 2. RUTA DE ONBOARDING ---
 @router.post("/onboarding")
 def create_company_onboarding(
     company_data: CompanyOnboarding, 
@@ -79,8 +79,15 @@ def create_company_onboarding(
         db.add(new_company)
         db.flush() # Hace un guardado temporal para conseguir el ID de la empresa
         
-        # 4. VINCULAMOS LA EMPRESA AL USUARIO
-        db_user.id_company = new_company.id
+        # 4. VINCULAMOS LA EMPRESA AL USUARIO A TRAVÉS DE LA TABLA INTERMEDIA
+        # Creamos el registro en la clase UserCompany
+        new_user_company = models.UserCompany(
+            id_user=db_user.id,
+            id_company=new_company.id,
+            user_role="admin" # Le ponemos admin ya que es el creador
+        )
+        db.add(new_user_company)
+        
         db.commit()
         db.refresh(new_company)
         

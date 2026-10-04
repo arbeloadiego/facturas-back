@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import jwt
 import bcrypt
-from jose import JWTError
+
+# Usamos ÚNICAMENTE python-jose para todo lo relacionado con JWT
+from jose import jwt, JWTError 
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-# En producción, esta clave secreta debe ir en un archivo .env
 SECRET_KEY = "tu_super_clave_secreta_muy_larga_y_dificil_de_adivinar"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # El token durará 7 días
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 días
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Compara la contraseña en texto plano con la encriptada en la BD"""
@@ -35,6 +35,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
     to_encode.update({"exp": expire})
+    # Aquí ahora usa automáticamente jwt de jose
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -50,8 +51,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        id_company: int = payload.get("id_company")
+        # Le decimos a Python que pueden ser str/int o None
+        email: Optional[str] = payload.get("sub")
+        id_company: Optional[int] = payload.get("id_company")
         
         if email is None:
             raise credentials_exception
@@ -68,7 +70,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     return payload
 
 def get_user_without_company(token: str = Depends(oauth2_scheme)):
-    """Verifica el token, pero permite el paso a usuarios que aún no tienen empresa (Para el Onboarding)"""
+    """Verifica el token, pero permite el paso a usuarios que aún no tienen empresa"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales inválidas o expiradas",
@@ -77,7 +79,7 @@ def get_user_without_company(token: str = Depends(oauth2_scheme)):
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
+        email: Optional[str] = payload.get("sub")
         
         if email is None:
             raise credentials_exception
@@ -86,4 +88,3 @@ def get_user_without_company(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
         
     return payload
-

@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Date
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Date, Text, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
+from datetime import datetime, timezone
 
 # Asegúrate de importar Base desde tu archivo database.py
 from .database import Base
@@ -86,6 +88,7 @@ class Company(Base):
     user_roles = relationship("UserCompany", back_populates="company", cascade="all, delete-orphan")
     telephones = relationship("CompanyTelephone", back_populates="company", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="company")
+    projects = relationship("Project", back_populates="company")
 
 
 # --- 3. CLIENTES Y DOCUMENTOS (Receivers & Documents) ---
@@ -103,13 +106,12 @@ class Customer(Base):
     postal_code = Column(String)
     country = Column(String, default="Spain")
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    
-    # NUEVO: Aislamos el cliente por empresa
     id_company = Column(Integer, ForeignKey("company.id"), nullable=False)
     
     # Relaciones
     documents = relationship("Document", back_populates="customer")
-    company = relationship("Company") # Opcional, pero útil
+    company = relationship("Company") 
+    projects = relationship("Project", back_populates="customer")
 
 
 class Document(Base):
@@ -126,11 +128,13 @@ class Document(Base):
     id_company = Column(Integer, ForeignKey("company.id"), nullable=False)
     id_customer = Column(Integer, ForeignKey("customers.id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    id_project = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
     # Relaciones
     company = relationship("Company", back_populates="documents")
     customer = relationship("Customer", back_populates="documents")
     items = relationship("DocumentItem", back_populates="document", cascade="all, delete-orphan")
+    project = relationship("Project", back_populates="documents")
 
 
 class DocumentItem(Base):
@@ -145,3 +149,27 @@ class DocumentItem(Base):
     
     # Relaciones
     document = relationship("Document", back_populates="items")
+
+# --- 4. PROYECTOS (Proyects) ---
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # 1. Claves foráneas vitales (Seguridad y Organización)
+    id_company = Column(Integer, ForeignKey("company.id"), nullable=False)
+    id_customer = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    
+    # 2. Datos básicos del proyecto
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default="activo") # activo, pausado, completado, cancelado
+    
+    # 3. Datos de control (Opcionales pero muy recomendados)
+    budget = Column(Numeric(10, 2), nullable=True) # Presupuesto estimado del proyecto
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # 4. Relaciones (Para poder navegar entre tablas fácilmente)
+    company = relationship("Company", back_populates="projects")
+    customer = relationship("Customer", back_populates="projects")
+    documents = relationship("Document", back_populates="project")

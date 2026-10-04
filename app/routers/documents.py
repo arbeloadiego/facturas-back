@@ -66,16 +66,14 @@ def get_dashboard_stats(
 def create_document(
     document: schemas.DocumentCreate, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user) # <-- REQUERIMOS USUARIO
+    current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("id_company")
-    
-   
+    company_id = int(current_user["id_company"])
     document.id_company = company_id
     
     # Verificar que el cliente existe Y pertenece a la empresa
     customer = crud.get_customer(db, customer_id=document.id_customer)
-    if not customer or customer.id_company != company_id:
+    if customer is None or customer.id_company != company_id: # type: ignore
         raise HTTPException(status_code=404, detail="El cliente indicado no existe o no pertenece a tu empresa")
     
     return crud.create_document(db=db, document=document)
@@ -86,11 +84,12 @@ def read_document(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("id_company")
+    company_id = int(current_user["id_company"])
     
-    db_document = crud.get_document(db, document_id=document_id)
+    # Pasamos el company_id al CRUD
+    db_document = crud.get_document(db, document_id=document_id, company_id=company_id)
     
-    if not db_document or db_document.id_company != company_id:
+    if not db_document:
         raise HTTPException(status_code=404, detail="Documento no encontrado o acceso denegado")
         
     return db_document
@@ -101,13 +100,14 @@ def delete_document(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("id_company")
+    company_id = int(current_user["id_company"])
     
-    db_document = crud.get_document(db, document_id=document_id)
-    if not db_document or db_document.id_company != company_id:
+    db_document = crud.get_document(db, document_id=document_id, company_id=company_id)
+    if not db_document:
         raise HTTPException(status_code=404, detail="Documento no encontrado o acceso denegado")
     
-    crud.delete_document(db, document_id=document_id)
+    # Pasamos el company_id al CRUD
+    crud.delete_document(db, document_id=document_id, company_id=company_id)
     return {"detail": "Documento eliminado con éxito"}
 
 @router.put("/{document_id}", response_model=schemas.Document)
@@ -117,17 +117,15 @@ def update_document(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("id_company")
-    
-    # Comprobamos propiedad antes de actualizar
-    db_document = crud.get_document(db, document_id=document_id)
-    if not db_document or db_document.id_company != company_id:
-        raise HTTPException(status_code=404, detail="Documento no encontrado o acceso denegado")
-        
-    # Forzamos la empresa en los datos entrantes por seguridad
+    company_id = int(current_user["id_company"])
     document.id_company = company_id
     
-    updated_document = crud.update_document(db, document_id=document_id, document=document)
+    # Pasamos el company_id al CRUD
+    updated_document = crud.update_document(db, document_id=document_id, company_id=company_id, document=document)
+    
+    if not updated_document:
+        raise HTTPException(status_code=404, detail="Documento no encontrado o acceso denegado")
+        
     return updated_document
 
 @router.patch("/{document_id}/status", response_model=schemas.Document)
@@ -137,13 +135,14 @@ def update_document_status(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("id_company")
+    company_id = int(current_user["id_company"])
     
-    db_document = crud.get_document(db, document_id=document_id)
-    if not db_document or db_document.id_company != company_id:
+    # Pasamos el company_id al CRUD
+    db_document = crud.get_document(db, document_id=document_id, company_id=company_id)
+    if not db_document:
         raise HTTPException(status_code=404, detail="Documento no encontrado o acceso denegado")
     
-    db_document.status = status_data.status
+    db_document.status = status_data.status # type: ignore
     db.commit()
     db.refresh(db_document)
     return db_document

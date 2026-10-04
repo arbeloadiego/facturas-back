@@ -4,7 +4,7 @@ from .database import engine, Base
 from .auth import get_current_user
 
 # 1. Importamos todos los routers
-from .routers import customers, documents, companies, users, auth
+from .routers import customers, documents, companies, users, auth, projects
 
 Base.metadata.create_all(bind=engine)
 
@@ -28,6 +28,7 @@ app.include_router(auth.router)
 
 app.include_router(customers.router, dependencies=[Depends(get_current_user)])
 app.include_router(documents.router, dependencies=[Depends(get_current_user)])
+app.include_router(projects.router)
 
 @app.get("/")
 def read_root():

@@ -86,65 +86,63 @@ def create_user(db: Session, user: schemas.UserCreate):
 # DOCUMENT OPERATIONS (Facturas y Presupuestos)
 # ==========================================
 
-def get_document(db: Session, document_id: int):
-    # Obtiene un documento (y gracias a las relationships en models.py, 
-    # también traerá sus items asociados automáticamente)
-    return db.query(models.Document).filter(models.Document.id == document_id).first()
+def get_document(db: Session, document_id: int, company_id: int):
+    return db.query(models.Document).filter(
+        models.Document.id == document_id,
+        models.Document.id_company == company_id # Bloqueo de seguridad
+    ).first()
 
-def get_documents(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Document).offset(skip).limit(limit).all()
+def get_documents(db: Session, company_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.Document).filter(
+        models.Document.id_company == company_id # Solo trae los de su empresa
+    ).offset(skip).limit(limit).all()
 
 def create_document(db: Session, document: schemas.DocumentCreate):
-    # 1. Extraemos los datos de la cabecera excluyendo la lista de items
+    # (Este se queda igual porque el id_company ya viene dentro del documentCreate)
     document_data = document.model_dump(exclude={"items"})
-    
-    # 2. Creamos la instancia de la cabecera (Factura o Presupuesto)
     db_document = models.Document(**document_data)
     
-    # 3. Recorremos los items que nos manda el frontend y los añadimos
     for item in document.items:
         db_item = models.DocumentItem(**item.model_dump())
-        # Magia de SQLAlchemy: Al hacer append, él solo rellenará el id_document
         db_document.items.append(db_item) 
         
-    # 4. Guardamos todo en la base de datos en una sola transacción segura
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
-    
     return db_document
 
-def delete_document(db: Session, document_id: int):
-    db_document = db.query(models.Document).filter(models.Document.id == document_id).first()
+def delete_document(db: Session, document_id: int, company_id: int):
+    db_document = db.query(models.Document).filter(
+        models.Document.id == document_id,
+        models.Document.id_company == company_id # Bloqueo de seguridad
+    ).first()
+    
     if db_document:
         db.delete(db_document)
         db.commit()
     return db_document
 
-def update_document(db: Session, document_id: int, document: schemas.DocumentCreate):
-    # 1. Buscamos el documento original
-    db_document = db.query(models.Document).filter(models.Document.id == document_id).first()
+def update_document(db: Session, document_id: int, company_id: int, document: schemas.DocumentCreate):
+    db_document = db.query(models.Document).filter(
+        models.Document.id == document_id,
+        models.Document.id_company == company_id # Bloqueo de seguridad
+    ).first()
     
     if not db_document:
         return None
 
-    # 2. Actualizamos la cabecera (Factura)
     document_data = document.model_dump(exclude={"items"})
     for key, value in document_data.items():
         setattr(db_document, key, value)
         
-    # 3. Borramos los items antiguos
     db.query(models.DocumentItem).filter(models.DocumentItem.id_document == document_id).delete()
     
-    # 4. Insertamos los nuevos items
     for item in document.items:
         db_item = models.DocumentItem(**item.model_dump(), id_document=document_id)
         db.add(db_item)
         
-    # 5. Guardamos cambios
     db.commit()
     db.refresh(db_document)
-    
     return db_document
 
 # ==========================================
